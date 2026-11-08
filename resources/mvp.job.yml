@@ -1,0 +1,59 @@
+# Job prodrec_mvp: 01 train Layer 1 -> 02 calibrate and validate -> 03 Layer 2 and reasons -> 04 batch scoring
+# (docs/MVP_SPEC.md section 11).
+# Notebook 00 (prepare ml.modeling_table from the synthetic data) is local only and not part of the job: on
+# Databricks ml.modeling_table comes from feature engineering, and conf/env/dev.yaml has allow_synthetic_data: false.
+# Only job-level parameters (a bundle job cannot combine them with task base_parameters); every task reads them as
+# widgets (common.get_param):
+#   env         conf/env/<env>.yaml, the bundle target
+#   release_id  mvp-<job run id>: the same release for 02 (creates it), 03 and 04 (require it on Databricks)
+#   run_date    "" -> today (04)
+#   l2_list     pilot | all | comma-separated
+resources:
+  jobs:
+    prodrec_mvp:
+      name: prodrec_mvp
+      parameters:
+        - name: training_config
+          default: conf/training.yaml
+        - name: env
+          default: ${bundle.target}
+        - name: release_id
+          default: mvp-{{job.run_id}}
+        - name: run_date
+          default: ""
+        - name: l2_list
+          default: pilot
+      job_clusters:
+        - job_cluster_key: single_node_ml
+          new_cluster:
+            spark_version: "18.x-cpu-ml-scala2.13"  # MIGRATION: confirm exact DBR 18 LTS ML string
+            node_type_id: "<set at migration>"
+            num_workers: 0
+            spark_conf:
+              "spark.databricks.cluster.profile": "singleNode"
+              "spark.master": "local[*]"
+            custom_tags:
+              ResourceClass: SingleNode
+      tasks:
+        - task_key: train_layer1
+          job_cluster_key: single_node_ml
+          notebook_task:
+            notebook_path: ../notebooks/01_train_layer1.py
+        - task_key: calibrate_and_validate
+          depends_on:
+            - task_key: train_layer1
+          job_cluster_key: single_node_ml
+          notebook_task:
+            notebook_path: ../notebooks/02_calibrate_and_validate.py
+        - task_key: layer2_and_reasons
+          depends_on:
+            - task_key: calibrate_and_validate
+          job_cluster_key: single_node_ml
+          notebook_task:
+            notebook_path: ../notebooks/03_layer2_and_reasons.py
+        - task_key: batch_scoring
+          depends_on:
+            - task_key: layer2_and_reasons
+          job_cluster_key: single_node_ml
+          notebook_task:
+            notebook_path: ../notebooks/04_batch_scoring.py

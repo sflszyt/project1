@@ -1,0 +1,31 @@
+# Reason groups v0: every feature maps to exactly one group via conf/feature_groups.csv
+# (columns feature_name, reason_group). LightGBM pred_contrib contributions are summed within a group.
+# sensitive:   downstream display requires an approved privacy policy; reasons skip sensitive groups.
+# explainable: false = never offered as a reason (RG00 collects population filters, guardrails and excluded columns).
+version: reason_groups_v0
+groups:
+  RG00: {name: none,                       sensitive: false, explainable: false, description: "No reason group: population filters, guardrails and excluded columns"}
+  RG01: {name: life_stage,                 sensitive: false, explainable: true,  description: "Age and life stage of the customer and who they buy for"}
+  RG02: {name: demographics_sensitive,     sensitive: true,  explainable: true,  description: "Sex and marital status"}
+  RG03: {name: wealth_income,              sensitive: true,  explainable: true,  description: "Income, liquid assets and wealth segments"}
+  RG04: {name: relationship_profile,       sensitive: false, explainable: true,  description: "Tenure, region, latest channel and address profile"}
+  RG05: {name: purchase_recency,           sensitive: false, explainable: true,  description: "Time since the last purchase"}
+  RG06: {name: ci_holdings,                sensitive: false, explainable: true,  description: "In-force critical illness cover"}
+  RG07: {name: medical_holdings,           sensitive: false, explainable: true,  description: "In-force medical cover"}
+  RG08: {name: savings_holdings,           sensitive: false, explainable: true,  description: "In-force savings policies"}
+  RG09: {name: other_protection_holdings,  sensitive: false, explainable: true,  description: "In-force other protection cover"}
+  RG10: {name: portfolio_size_value,       sensitive: false, explainable: true,  description: "Number of policies, APE and sum assured"}
+  RG11: {name: gi_cross_line,              sensitive: false, explainable: true,  description: "General insurance policies in the past two years"}
+  RG12: {name: customer_portal_engagement,           sensitive: false, explainable: true,  description: "Customer portal activation, logins and eStatement visits"}
+  RG13: {name: product_browsing,           sensitive: false, explainable: true,  description: "Recent product-page browsing"}
+  RG14: {name: quote_activity,             sensitive: false, explainable: true,  description: "Online premium quotes started or completed"}
+  RG15: {name: web_sessions,               sensitive: false, explainable: true,  description: "Website sessions, recency and duration"}
+  RG16: {name: leads_contact_history,      sensitive: false, explainable: true,  description: "Lead contacts, conversions and sources"}
+  RG17: {name: policy_servicing,           sensitive: false, explainable: true,  description: "Policy administration requests and address changes"}
+  RG18: {name: investment_activity,        sensitive: false, explainable: true,  description: "Fund switches, withdrawals and top-ups"}
+  RG19: {name: lapse_history,              sensitive: false, explainable: true,  description: "Lapses, reinstatements and policies at risk"}
+  RG20: {name: maturity_expiry,            sensitive: false, explainable: true,  description: "Matured and expired policies"}
+  RG21: {name: payment_behaviour,          sensitive: false, explainable: true,  description: "Premium due dates, missed and cancelled payments"}
+  RG22: {name: agent_relationship,         sensitive: false, explainable: true,  description: "Servicing agent changes and orphan status"}
+  RG23: {name: claims_history,             sensitive: true,  explainable: true,  description: "Claims history (requires data protection approval)"}
+  RG24: {name: household_lives_assured,    sensitive: true,  explainable: true,  description: "Ages and number of lives assured, possibly family members and minors"}

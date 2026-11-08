@@ -1,0 +1,43 @@
+# Databricks migration source only. Keep every other local file untracked.
+# Datasets, outputs, models, caches, credentials, agent tooling, tests, local runners,
+# reference originals and handoff/audit records are intentionally excluded.
+# Add new runtime paths explicitly after reviewing their content and dependencies.
+/*
+!/.gitattributes
+!/.gitignore
+!/README.md
+!/databricks.yml
+
+!/conf/
+/conf/*
+!/conf/feature_groups.csv
+!/conf/l2_config_validity.csv
+!/conf/layer2.yaml
+!/conf/products.yaml
+!/conf/reason_groups.yaml
+!/conf/training.yaml
+!/conf/training.raw-retained.yaml
+!/conf/training.raw-reallocated.yaml
+!/conf/env/
+/conf/env/*
+!/conf/env/dev.yaml
+
+!/docs/
+/docs/*
+!/docs/GENIE_HANDOVER.md
+!/docs/MVP_SPEC.md
+!/docs/modeling_flow.html
+
+!/notebooks/
+/notebooks/*
+!/notebooks/01_train_layer1.py
+!/notebooks/02_calibrate_and_validate.py
+!/notebooks/03_layer2_and_reasons.py
+!/notebooks/04_batch_scoring.py
+!/notebooks/common.py
+!/notebooks/l1_contract.py
+!/notebooks/modeling.py
+
+!/resources/
+/resources/*
+!/resources/mvp.job.yml

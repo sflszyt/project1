@@ -1,0 +1,46 @@
+# Product catalog: 17 placeholder L2 categories under 5 L1 groups.
+# Replace names and attributes with the real catalog when it is available; the notebooks read everything from here.
+version: products_mvp_v1
+
+# Key columns of raw.client_snapshot_monthly and ml.modeling_table
+keys:
+  client_id: client_id
+  snapshot_date: snapshot_date        # month end
+
+# Column naming in raw.client_snapshot_monthly
+label_column_template: "y_{l2}"           # 1 = qualifying purchase within H months; NULL on immature snapshots
+eligibility_column_template: "elig_{l2}"  # risk-set flag 0/1, never NULL; every step filters elig_{l2} = 1
+
+# Columns of the input table that are never model features (besides keys, labels, eligibility and split columns)
+feature_exclusions:
+  - CLIENT_JOINDATE                   # redundant with cust_tenure_drv
+
+l1_groups:
+  - CI
+  - Medical
+  - Savings w/o Protection
+  - Savings and Protection
+  - Other Protection
+
+# holder_rule: exclude_holders = holders of this L2 are outside its risk set ("usually bought once")
+#              keep_holders    = holders stay in the risk set; holdings enter as features
+# business_weight: multiplies the ranking field in notebook 04 (ranking_score)
+# pilot: true = part of the default l2_list (acceptance run); l2_list=all runs all 17
+products:
+  product1:  {l1: CI,                     display_name: "Critical Illness (pilot)",  holder_rule: keep_holders,    business_weight: 1.0, pilot: true}
+  product2:  {l1: CI,                     display_name: "CI 2",                      holder_rule: keep_holders,    business_weight: 1.0, pilot: false}
+  product3:  {l1: CI,                     display_name: "CI 3",                      holder_rule: keep_holders,    business_weight: 1.0, pilot: false}
+  product4:  {l1: CI,                     display_name: "CI 4",                      holder_rule: keep_holders,    business_weight: 1.0, pilot: false}
+  product5:  {l1: Medical,                display_name: "VHIS-like Medical (pilot)", holder_rule: exclude_holders, business_weight: 1.0, pilot: true}
+  product6:  {l1: Medical,                display_name: "Medical 6",                 holder_rule: exclude_holders, business_weight: 1.0, pilot: false}
+  product7:  {l1: Medical,                display_name: "Medical 7",                 holder_rule: keep_holders,    business_weight: 1.0, pilot: false}
+  product8:  {l1: Savings w/o Protection, display_name: "Savings w/o Protection 8",  holder_rule: keep_holders,    business_weight: 1.0, pilot: true}
+  product9:  {l1: Savings w/o Protection, display_name: "Savings w/o Protection 9",  holder_rule: keep_holders,    business_weight: 1.0, pilot: false}
+  product10: {l1: Savings w/o Protection, display_name: "Savings w/o Protection 10", holder_rule: keep_holders,    business_weight: 1.0, pilot: false}
+  product11: {l1: Savings and Protection, display_name: "Long-term Savings (pilot)", holder_rule: keep_holders,    business_weight: 1.0, pilot: true}
+  product12: {l1: Savings and Protection, display_name: "Savings and Protection 12", holder_rule: keep_holders,    business_weight: 1.0, pilot: false}
+  product13: {l1: Savings and Protection, display_name: "Savings and Protection 13", holder_rule: keep_holders,    business_weight: 1.0, pilot: false}
+  product14: {l1: Savings and Protection, display_name: "Savings and Protection 14", holder_rule: keep_holders,    business_weight: 1.0, pilot: true}
+  product15: {l1: Other Protection,       display_name: "Other Protection 15",       holder_rule: exclude_holders, business_weight: 1.0, pilot: false}
+  product16: {l1: Other Protection,       display_name: "Other Protection 16",       holder_rule: keep_holders,    business_weight: 1.0, pilot: true}
+  product17: {l1: Other Protection,       display_name: "Other Protection 17",       holder_rule: keep_holders,    business_weight: 1.0, pilot: false}

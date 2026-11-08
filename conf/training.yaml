@@ -1,0 +1,81 @@
+# Layer 1 training, calibration, validation and explanation settings (docs/MVP_SPEC.md sections 5, 7, 8).
+
+# Time blocks are derived from the snapshot dates in the data, never written as dates here (common.derive_split_dates):
+# last_mature = the latest month-end snapshot s with add_months(s, horizon + maturity) <= extraction_date;
+# from last_mature backwards: test, gap, calibration, gap; train = all earlier mature snapshots.
+timeline:
+  extraction_date: 2026-10-01
+  horizon_months: 3              # H: label = qualifying purchase in (s, s + H months]
+  maturity_months: 2             # m: delay before a label window is complete in the source data
+  mode: retrospective_holdout    # available at extraction; NOT a historical deployment replay
+  tuning_fit_as_of: null         # null resolves to extraction_date; includes validation-label readiness
+  base_fit_as_of: null
+  calibrator_fit_as_of: null
+  evaluation_as_of: null
+
+split:
+  test_snapshots: 3
+  train_calibration_gap_snapshots: 3
+  calibration_test_gap_snapshots: 3  # train -> test gap when calibration_snapshots=0
+  calibration_snapshots: 3
+  inner_valid_snapshots: 3       # notebook 01: early stopping on the end of train ...
+  inner_gap_snapshots: 3         # ... after an inner gap; then refit on all of train with best_iteration
+  min_train_snapshots: 12
+  train_max_snapshots: null      # optional recent Train cap; older mature rows become unused
+  refit_scope: all_train         # all_train | tuning_fit; calibration/test never included
+
+lightgbm:                        # champion model; no class weights / SMOTE / scale_pos_weight
+  objective: binary
+  metric: binary_logloss
+  num_leaves: 31
+  learning_rate: 0.05
+  min_data_in_leaf: 200
+  feature_fraction: 0.8
+  bagging_fraction: 0.8
+  bagging_freq: 1
+  lambda_l2: 1.0
+  max_rounds: 2000
+  early_stopping_rounds: 50
+  seed: 7
+  deterministic: true
+  force_row_wise: true
+  num_threads: 0                 # 0 = LightGBM default (all cores)
+  verbosity: -1
+
+logistic:                        # baseline only (WARN when it beats LightGBM on inner validation; never switched)
+  solver: lbfgs
+  C: 1.0
+  max_iter: 500
+  baseline_sample_rows: 500000
+
+evidence_tiers:                  # distinct purchase_id events in the calibration block (elig_at_feature_snapshot = 1)
+  source: calibration            # inner_valid allowed only with disabled calibration; may change eligibility
+  own_model_min_events: 200      # own: Platt calibration
+  limited_min_events: 100        # limited: intercept-only; below: insufficient (not calibrated)
+
+calibration:
+  enabled: true
+  isotonic: false                # not implemented in the MVP
+  platt_C: 1000000               # effectively unregularised
+  final_refit_calibrator: false  # not implemented in the MVP
+
+gate:                            # computed on the ranking field, Test block
+  auroc_min: 0.60
+  lift10_min: 1.5
+  oe_range: [0.8, 1.25]
+  slope_range: [0.7, 1.3]
+
+ranking:
+  ranking_field: calibrated      # calibrated | raw (release level; forced to raw when calibration.enabled is false)
+
+evaluation:
+  top_fractions: [0.01, 0.05, 0.10]
+  bootstrap: {n_boot: 200, seed: 11, ci: 0.95}   # clustered by client_id
+
+explain:
+  top_k: 3                       # recommendations per customer
+  top_n_reasons: 3
+  store_feature_level: false
+
+scoring:
+  lookback_days: 35              # scoring snapshot = latest snapshot <= run_date within this many days

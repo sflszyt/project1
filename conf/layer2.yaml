@@ -1,0 +1,44 @@
+# Layer 2 configuration guidance and its training/evaluation split (docs/MVP_SPEC.md section 9).
+# Training rows: raw.l2_purchase_config (elig_at_feature_snapshot = 1) joined to ml.modeling_table features on
+# (client_id, feature_snapshot_date = snapshot_date).
+#
+# method: head  = pooled LightGBM over the L2s where the attribute has >= 2 valid values (l2 as categorical);
+#                 an L2 falls back to its historical share when one of its values has < min_rows_per_value
+#                 training rows; an L2 with a single valid value gets that value (status fixed).
+#                 margin: abstain unless the top value's probability beats the runner-up by at least this much.
+# method: rule  = derived from snapshot features by the rule below.
+# method: share = historical share of each value in the training purchases.
+# constraints: per value, a pandas expression over the client's snapshot features that must hold for the value to be
+#              offered (checked per row when scoring); on_missing: allow | block (default allow) decides a row where a
+#              column the expression reads is NULL: allow keeps the value, block rules it out. All three use allow:
+#              271 eligible spouse purchases in the data have a NULL PO_marital_status.
+attributes:
+  sp_rp:       {method: head,  values: [SP, RP],              min_rows_per_value: 200, margin: 0.20}
+  par_nonpar:  {method: head,  values: [Par, NonPar],         min_rows_per_value: 200, margin: 0.20}
+  mass_higher: {method: rule,  values: [Mass, HigherEnd],     rule: {feature: wealth_seg3, higher_end_values: [UHNW, HNW, Affluent]}}
+  buying_for:  {method: head,  values: [self, spouse, child, parent], min_rows_per_value: 200, margin: 0.20,
+                constraints: [{value: spouse, require: "PO_marital_status == 'Married'", on_missing: allow},
+                              {value: parent, require: "CURRENT_AGE < 50",                on_missing: allow},
+                              {value: child,  require: "CURRENT_AGE > 25",                on_missing: allow}]}
+validity_file: conf/l2_config_validity.csv     # per L2 the allowed (sp_rp, par_nonpar, mass_higher) combinations
+# inner_valid_months: the heads early-stop on the last this-many application months of train, then refit on all of it
+split: {train_application_end: 2026-01-31, test_application_start: 2026-02-01, test_application_end: 2026-07-31,
+        inner_valid_months: 3}
+
+# LightGBM for the heads: same starting point as training.yaml lightgbm (the fit_lgbm() of notebook 01 is reused).
+# objective / metric are set per head by notebook 03: binary for two values, multiclass otherwise.
+lightgbm:
+  num_leaves: 31
+  learning_rate: 0.05
+  min_data_in_leaf: 200
+  feature_fraction: 0.8
+  bagging_fraction: 0.8
+  bagging_freq: 1
+  lambda_l2: 1.0
+  max_rounds: 2000
+  early_stopping_rounds: 50
+  seed: 7
+  deterministic: true
+  force_row_wise: true
+  num_threads: 0
+  verbosity: -1

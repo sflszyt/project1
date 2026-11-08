@@ -1,0 +1,376 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>Prod_Recom · 推荐引擎建模流程</title>
+<style>
+:root{--ink:#152a3b;--muted:#43596a;--line:#c5d2db;--paper:#f3f6f8;--white:#fff;--teal:#075b50;--teal-soft:#e5f4ee;--blue:#174e86;--blue-soft:#eaf2fc;--amber:#694209;--amber-soft:#fff4dc;--red:#852f32;--red-soft:#faeeee}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:20px}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.75 "Microsoft YaHei","PingFang SC",system-ui,sans-serif}
+a{color:var(--blue);text-decoration-thickness:1px;text-underline-offset:3px}
+a:focus-visible{outline:3px solid var(--blue);outline-offset:4px}
+main{max-width:1180px;margin:auto;padding:36px 32px 64px}
+h1,h2,h3,h4{line-height:1.4;margin:0 0 14px}
+h1{font-size:clamp(30px,4vw,46px);letter-spacing:-1px}
+h2{font-size:clamp(23px,3vw,30px)}
+h3{font-size:20px}h4{font-size:17px}
+p{margin:10px 0 16px}ul,ol{margin:10px 0;padding-left:24px}li+li{margin-top:7px}
+code{font:0.88em/1.6 Consolas,"Microsoft YaHei",monospace;background:#e9eef2;padding:2px 5px;border-radius:4px;overflow-wrap:anywhere}
+strong{font-weight:700}small,.small{font-size:14px;color:var(--muted)}
+.eyebrow{color:var(--teal);font-weight:700;font-size:13px;letter-spacing:.12em;margin-bottom:12px}
+.lede{max-width:850px;color:var(--muted);font-size:18px}
+.badge{display:inline-block;border:1px solid #92bdae;background:var(--teal-soft);color:var(--teal);padding:4px 12px;border-radius:30px;font-size:14px;font-weight:700}
+.nav{display:flex;flex-wrap:wrap;gap:10px;margin:26px 0 0}
+.nav a{display:block;padding:8px 14px;background:var(--white);border:1px solid var(--line);border-radius:8px;font-weight:700;text-decoration:none}
+.section{margin-top:48px;border-top:2px solid var(--line);padding-top:28px}
+.section-title{display:flex;align-items:baseline;gap:14px}
+.no{color:var(--teal);font-size:14px;white-space:nowrap;font-weight:700}
+.intro{max-width:940px;color:var(--muted)}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+.grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.card{background:var(--white);border:1px solid var(--line);border-radius:12px;padding:22px;min-width:0}
+.card>*:last-child{margin-bottom:0}
+.card.teal{border-top:5px solid var(--teal)}
+.card.blue{border-top:5px solid var(--blue)}
+.card.amber{border-top:5px solid var(--amber)}
+.label{display:block;font-size:13px;font-weight:700;letter-spacing:.05em;color:var(--muted);margin-bottom:8px}
+.note{border-left:4px solid var(--amber);background:var(--amber-soft);padding:16px 20px;border-radius:0 8px 8px 0;margin:20px 0}
+.note.info{border-color:var(--blue);background:var(--blue-soft)}
+.note.good{border-color:var(--teal);background:var(--teal-soft)}
+.arrow{text-align:center;font-size:15px;font-weight:700;color:var(--teal);padding:10px 8px}
+.flow{margin:0;list-style:none;padding:0;display:grid;gap:14px}
+.flow>li{margin:0;display:grid;grid-template-columns:68px minmax(0,1fr);gap:18px;position:relative;background:var(--white);border:1px solid var(--line);padding:20px;border-radius:10px}
+.step-number{height:46px;width:58px;display:grid;place-items:center;background:var(--teal-soft);color:var(--teal);border-radius:8px;font-size:24px;font-weight:700}
+.flow h3{margin-bottom:5px}.flow p{margin:5px 0 10px}
+.artifact{font-size:14px;color:var(--muted);border-top:1px solid var(--line);padding-top:10px}
+figure{margin:20px 0}figcaption{font-size:14px;color:var(--muted);margin-top:12px}
+.timeline{display:grid;gap:10px;margin:16px 0}
+.block{border:1px solid var(--line);border-left:5px solid var(--blue);border-radius:7px;padding:12px 15px;background:var(--blue-soft)}
+.block strong,.block span{display:block}.block span{font-size:14px}
+.block.train{border-color:#a8c9ba;border-left-color:var(--teal);background:var(--teal-soft)}
+.block.gap{border-left-color:#647585;background:#edf1f4}
+.block.cal{border-left-color:var(--amber);background:var(--amber-soft)}
+.block.test{border-left-color:var(--blue)}
+.block.empty{background:var(--white);border-style:dashed;border-left-color:var(--muted)}
+.formula{font-weight:700;font-size:17px;overflow-wrap:anywhere}
+.math-block{margin:14px 0;padding:14px 16px;background:#edf2f6;border:1px solid var(--line);border-radius:8px;white-space:pre-wrap;overflow-wrap:anywhere;font:15px/1.8 Consolas,"Microsoft YaHei",monospace}
+.math-detail{margin-top:28px}.math-detail h4{margin-top:22px}.math-detail .table-scroll{margin:14px 0}.math-table th,.math-table td{overflow-wrap:anywhere}
+.number{font-size:28px;font-weight:700;color:var(--teal)}
+.decision{border-radius:10px;padding:18px;background:var(--teal-soft);border:1px solid #92bdae}
+.decision.fail{color:var(--red);background:var(--red-soft);border-color:#d3a9ad}
+.decision.pass{color:var(--teal)}
+.table-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:white}
+table{border-collapse:collapse;width:100%;font-size:14px;text-align:left}
+th,td{padding:13px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{background:#e7eef3;font-weight:700}
+tbody tr:last-child td{border-bottom:0}
+.numeric{font-variant-numeric:tabular-nums;white-space:nowrap}
+.scroll-hint{font-size:13px;color:var(--muted);margin:4px 0 8px}
+.ranking{min-width:790px}
+.rank-cards{display:none}
+.rank-card{background:white;border:1px solid var(--line);border-left:5px solid var(--teal);padding:16px;border-radius:8px}
+.rank-card.excluded{border-left-color:var(--red)}
+.rank-card p{margin:4px 0;font-size:15px}
+.commit{display:grid;grid-template-columns:1fr auto 1.4fr auto 1fr;gap:12px;align-items:center;margin:22px 0}
+.commit .card{padding:16px;text-align:center}
+.mono{overflow-wrap:anywhere}
+footer{margin-top:42px;border-top:1px solid var(--line);padding-top:20px;color:var(--muted);font-size:14px}
+@media(max-width:760px){main{padding:24px 18px 44px}.grid,.grid.three{grid-template-columns:1fr}.section{margin-top:36px;padding-top:24px}.card{padding:18px}.flow>li{grid-template-columns:44px minmax(0,1fr);gap:12px;padding:16px}.step-number{width:42px;height:40px;font-size:20px}.section-title{gap:10px}.commit{grid-template-columns:1fr;gap:0}.commit .arrow{transform:none}.desktop-ranking{display:none}.rank-cards{display:grid;gap:12px}.nav a{padding:7px 10px;font-size:14px}body{font-size:16px}.lede{font-size:17px}.note{padding:14px 16px}}
+@media print{body{background:white}main{max-width:none;padding:10px}.section{break-before:page}a{color:var(--ink)}.card,.flow>li,.block,.rank-card{break-inside:avoid}.nav{display:none}.section:first-of-type{break-before:auto}.table-scroll{overflow:visible}}
+@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<main>
+<header>
+<div class="eyebrow">PROD_RECOM · LEAN-V0 · 当前契约 2026-10-04</div>
+<h1>从时间快照到客户推荐</h1>
+<p class="lede">四段流程串起同一条线：上游先产合约数据，按 YAML 留出时间窗口，训练与校准各用自己的样本，最后发布可追溯的 Top-k 结果。</p>
+<span class="badge">已实现：回顾性时间留出 + 可选校准</span>
+<p class="small">业务修正已独立 ACCEPT；本页是当前实现图解。生产效果评价器、滚动校准与 monitoring 仍推迟。</p>
+<nav class="nav" aria-label="图解导航">
+<a href="#data-flow">图 1 · 数据与模型</a><a href="#rolling-plan">图 2 · 时间与配置</a><a href="#calibration-decision">图 3 · 证据与校准</a><a href="#ranking-example">图 4 · 推荐与提交</a>
+</nav>
+<nav class="nav" aria-label="数学说明导航"><a href="#layer1-math">Layer 1 数学</a><a href="#calibration-math">校准数学</a><a href="#layer2-math">Layer 2 数学</a><a href="#shap-math">SHAP 与 reasons</a></nav>
+</header>
+
+<section class="section" id="data-flow" aria-labelledby="flow-title">
+<div class="section-title"><span class="no">图 1</span><h2 id="flow-title">先分清数据入口，再看模型流向</h2></div>
+<p class="intro">本地演示从已有合成 raw 快照开始；Databricks 的真实特征与标签由上游生成。两条路径在 01 的输入契约会合。</p>
+<figure aria-label="合成准备与真实上游在01前会合，经过01训练、02评价发布、03配置指导、04打分">
+<div class="grid">
+<article class="card teal"><span class="label">本地合成路径</span><h3>已有合成快照 → 00 准备</h3><p><code>raw.client_snapshot_monthly</code> 加上配置推导的 split，写建模表与列字典。</p><p><strong>00 仅做合成准备。</strong> 它不是生成真实特征、标签的选项，<code>allow_synthetic_data=false</code> 时拒绝。</p></article>
+<article class="card blue"><span class="label">真实 Databricks 路径 · 接入待执行</span><h3>上游工程 → 直接提供 01 输入</h3><p>在 01 前产出 <code>ml.modeling_table</code>、<code>ml.data_dictionary</code>、<code>raw.l2_purchase_config</code>，按同一 training YAML 分配 split。</p><p>现有 job 从 <strong>01→04</strong>，不包含 00。</p></article>
+</div>
+<div class="arrow" aria-hidden="true">↓ 同一输入契约：键 / 143 登记特征 / 标签 / eligibility / 日期与 split ↓</div>
+<ol class="flow">
+<li><div class="step-number" aria-hidden="true">01</div><div><h3>训练前全表校验 → tuning → champion</h3><p>先校验完整未抽样表与字典，再按产品 <code>elig=1</code>。tuning 在 inner_valid 早停选迭代；champion 按 <code>refit_scope</code> 另行重拟合。</p><div class="grid"><div><strong>真实 tuning 预测</strong><br><code>inner_valid</code> ← <code>tuning/model.txt</code><br><span class="small">自己的 fit-only 类别/转换；指标用于迭代选择。</span></div><div><strong>冻结 champion 预测</strong><br><code>calibration / test</code> ← <code>model.txt</code><br><span class="small">独立 refit 类别/转换；04 只服务它。</span></div></div><p class="artifact">写 ml.l1_raw_scores / ml.l1_training_runs；MLflow 同一训练 run 保存不同 role/artifact、best_iteration 与 training_provenance.json。Logistic 只作比较，不切换 champion。</p></div></li>
+<li><div class="step-number" aria-hidden="true">02</div><div><h3>证据分层 → 可选校准 → Final Test 报告与 gate</h3><p>核对原模型、配置/特征哈希、输入物理表名与版本；校准只用保留 calibration。Test 只报告与按固定门槛放行，不能决定 evidence、模型或校准方法。</p><p class="artifact">写 ml.l1_evaluation / ml.model_selection；MLflow + 新唯一 release 文件包。未校准的 calibrated 指标为 null / N/A。</p></div></li>
+<li><div class="step-number" aria-hidden="true">03</div><div><h3>购买属性 → Layer 2 配置指导</h3><p>购买事件 join 快照特征，沿用 head / rule / share / fixed、validity mask、约束和 margin abstain。类别字典从自己的 pooled Train 购买行学习。</p><p class="artifact">写 ml.l2_evaluation / ml.layer2_models，向 release 增加 layer2/。L1 reasons 使用对应产品 champion 的 feature spec。</p></div></li>
+<li><div class="step-number" aria-hidden="true">04</div><div><h3>固定输入版本 → 验证 release → 批量推荐</h3><p>先捕获三个输入表的 Delta version 再读取；files 与 MLflow 均验证原始 run、模型/spec/calibrator 哈希。选最近快照、按发布字段排序，Top-k 生成指导和解释。</p><p class="artifact">写三张 scores 数据表；最后写 scores.scoring_runs。提交协议见图 4。</p></div></li>
+</ol>
+<figcaption>图 1 — 输入失败在训练前拒绝；不自动修复 split，也不为兼容旧 release 重标 provenance。表版本、模型版本、校准器版本各自记录。</figcaption>
+</figure>
+<div class="note info"><strong>真实接入尚待执行。</strong> 当前 <code>resources/mvp.job.yml</code> 有 training_config、env、release_id、run_date、l2_list 五个 job 参数，没有 sample_fraction 参数；本地 runner 才执行 00→04。远端 bundle validate/部署没有通过或执行。</div>
+<article class="math-detail card" id="layer1-math" aria-labelledby="layer1-math-title">
+<span class="label">数学说明 · 当前实现</span><h3 id="layer1-math-title">Layer 1：目标、树学习与评价</h3>
+<h4>预测对象与样本单位</h4>
+<p>对客户 i、产品 ℓ、快照 t，只有 <code>eligᵢ,ℓ,t=1</code> 的行进入该产品的训练与评价。标签 <code>yᵢ,ℓ,t=1</code> 表示在 <code>(t, t+3个月]</code> 内有合格购买，否则成熟标签为 0；另等 2 个月才认为标签完整，即直接计算 <code>ready_on=t+5个月</code>。模型估计的是该产品 eligible 客户在这个窗口内的购买倾向，输入 x 是当时的快照特征，不包含未来购买属性。</p>
+<p>训练单位是客户×快照行，并非互相独立的购买事件：同一客户会重复出现，一次购买也可使多个快照为正。拟合行数、客户数、distinct purchase_id 三者不同；client 抽样保留客户的时间序列，不是正负样本均衡。当前 <code>retrospective_holdout</code> 只声称提取时可用数据上的回顾性时间留出，不能解释成历史部署回放；§5 的窗口与成熟度契约保持不变。</p>
+<h4>LightGBM 的 margin、损失和树更新</h4>
+<p>每个产品有自己的二分类 boosted-tree 模型。当前 <code>objective=binary</code> 且没有覆盖 LightGBM 的默认 <code>sigmoid=1</code>，所以原始概率 s 与 raw margin F 的关系为：</p>
+<pre class="math-block">Fℓ(x) = Fℓ,0 + η Σₘ₌₁ᴹ fℓ,m(x)；sℓ(x) = sigmoid(Fℓ(x))
+ℓ(y,F) = −y ln(s) − (1−y) ln(1−s)
+       = ln(1+exp(F)) − yF
+g = ∂ℓ/∂F = s−y；h = ∂²ℓ/∂F² = s(1−s)</pre>
+<p>f 是一棵树给当前行所属叶子的更新，η 是 learning_rate，M 是选定轮数；各轮在已有 margin 上增加修正，并非对树的概率取平均。初始项与缩放由 LightGBM 保存，不能在读取模型后再重复乘 learning_rate。二元交叉熵惩罚高信心的错误预测；梯度与 Hessian 给出当前误差的方向及局部曲率。</p>
+<p><code>lambda_l2</code> 对叶值做 L2 正则。用一个普通叶子的局部二阶近似说明其作用：若叶内 <code>G=Σg, H=Σh</code>，关于叶更新 w 的项为 <code>G·w + ½(H+λ)w²</code>，相应驻点是 <code>w=−G/(H+λ)</code>；更大的 λ 会压缩同样 G/H 下的更新。这是解释叶更新的局部近似，不是把 sklearn 线性模型的惩罚目标当成 LightGBM 的完整训练算法；实际还受树分裂、叶约束、采样和 shrinkage 等影响。</p>
+<p>当前 <a href="../conf/training.yaml">training.yaml</a> 为 <code>binary_logloss</code>、<code>num_leaves=31</code>、<code>learning_rate=0.05</code>、<code>min_data_in_leaf=200</code>、<code>feature_fraction=0.8</code>、<code>bagging_fraction=0.8</code>、<code>bagging_freq=1</code>、<code>lambda_l2=1</code>、最多 2000 轮、50 轮 early stopping。特征/行采样用于树训练，不是 class weights；未使用 class weights、SMOTE 或 scale_pos_weight。默认参数含义参见 <a href="https://lightgbm.readthedocs.io/en/v4.6.0/Parameters.html">LightGBM 4.6 参数</a>。</p>
+<p>01 在 tuning_fit 训练、inner_valid 选 best_iteration，再另建固定轮数的 champion；默认 all_train 重拟合，或按配置只用 tuning_fit，始终排除 calibration/Test。关闭校准也不会取消这个 Train 内 refit。类别水平分别从各模型的实际拟合人口学习；未知类别编码为 NaN，数值为 float32。inner_valid 已参与轮数选择，其指标是 tuning 诊断，不是无偏最终成绩。logistic baseline 使用自己的 fit-only 预处理，只作比较；更优时 WARN，绝不自动换掉 champion。</p>
+<h4>指标各回答什么问题</h4>
+<p>在固定某一产品的 eligible 评价行上，p 表示本次评价的实际概率字段（raw 或真实 calibrated）。AUROC 衡量正例是否排在负例之前，lift 衡量高分人群的正例集中度；O/E、Brier 与 log-loss 检查概率刻度，而不是只看名次：</p>
+<pre class="math-block">AUROC = P(p⁺ &gt; p⁻) + ½ P(p⁺ = p⁻)
+k = ceil(0.10 n)
+lift@10% = [Σ(前 k 行的 y)/k] / [Σy/n]
+O/E = Σy / Σp
+Brier = (1/n) Σ(p−y)²
+log-loss = −(1/n) Σ[y ln(p)+(1−y) ln(1−p)]</pre>
+<p>AUROC 需要同时有正、负例；只有一类时不能赋一个有意义的 AUROC。lift 先按 p 降序，同分保留评价行顺序，分母正例率必须非零；这与跨产品排名按 l2 名字典序平分是不同规则。O/E&gt;1 表示该批观测正例数多于预测总和（整体低估），O/E&lt;1 表示整体高估，但 O/E≈1 本身不能证明每个概率区间都准确。Brier 和 log-loss 越低越好；实际 log-loss 以 <code>1e-15</code> 裁剪端点避免 log(0)。重复客户的依赖也解释了为何现有 CI 按 client 聚类 bootstrap，不能将每行视为独立购买。</p>
+<p><strong>数学示例，非模型成绩</strong>：十行已按概率降序排列，<code>p=[0.90,0.80,0.70,0.60,0.50,0.40,0.30,0.20,0.10,0.05]</code>，<code>y=[1,0,1,0,0,1,0,0,0,0]</code>。正负例配对共 3×7=21 对，正例胜出 17 对且无并列，所以 AUROC=17/21=0.809524。top 10% 取 ceil(1)=1 行，命中率 1，整体率 0.3，lift=3.333333；Σp=4.55、Σy=3，O/E=0.659341，Brier=0.185250，log-loss=0.533367。这个例子能把正例排得较前，却总体高估概率；排序好不等于校准好。</p>
+<p>评价中的 calibration slope 是在<strong>所评价块</strong>上另拟合诊断回归 <code>P(y=1)=sigmoid(α+β·logit(clip(p,1e-6,1−1e-6)))</code>，实现为 <code>LogisticRegression(penalty=None)</code>，报告 β 和 α；理想刻度参照 β≈1、α≈0。它不更新服务模型，也不利用 Test 选择校准器。这个无惩罚诊断不能与 §8.1 在独立 calibration 块拟合、带弱 L2 的 Platt 参数 a,b 混同；单类或退化输入也会使诊断无定义或不稳定。</p>
+<h4>概率如何变成 Top-3</h4>
+<p>先确定该客户的 eligibility 与产品 tier/gate 放行集合，再在集合中计算 <code>ranking_scoreᵢ,ℓ = selected_probabilityᵢ,ℓ × business_weightℓ</code>，降序取 Top-3，同分按 l2 名字典序。权重表达业务排序策略；这个乘积不是已建模的期望收入，也不是联系客户后的因果增益。不同产品的概率可比性仍需验证；Layer 2 的属性指导是在选中之后生成，不回头重排产品。</p>
+<p>实现对应：<a href="../notebooks/01_train_layer1.py">01</a>、<a href="../notebooks/modeling.py">modeling.py</a> 的 <code>train_l1_pair / binary_metrics / calibration_slope</code>、<a href="../notebooks/04_batch_scoring.py">04</a>。同义入口：<a href="GENIE_HANDOVER.md#layer1-math">英文</a>、<a href="modeling_flow.html#layer1-math">离线图解</a>；概率刻度变换见 <a href="MVP_SPEC.md#calibration-math">校准数学</a>。</p>
+</article>
+</section>
+
+<section class="section" id="rolling-plan" aria-labelledby="timeline-title">
+<div class="section-title"><span class="no">图 2</span><h2 id="timeline-title">同一批快照，三种明确的时间分配</h2></div>
+<p class="intro">这里展示当前实现，保留原 section 锚点方便旧链接定位。日期由三份完整 YAML 与当前 36 个连续月末快照推导；提取日 <strong>2026-10-01</strong>，最后成熟快照 <strong>2026-04-30</strong>。</p>
+<div class="note good"><strong>当前是 retrospective_holdout。</strong> 提取时标签已可用，并不说明这些模型在历史 prediction origin 已训练好。旧的“10 月底固定 base、之后滚动校准”方案没有实现，不作为当前流程。</div>
+<figure aria-label="calibrated和raw-retained保留Train19校准3Test3；raw-reallocated显式Train25校准0Test3">
+<div class="grid three" id="rp-initial">
+<article class="card teal"><span class="label">A · CALIBRATED</span><h3>保留校准并拟合</h3><p><code>conf/training.yaml</code></p><div class="timeline">
+<div class="block train"><strong>Train · 19 个快照</strong><span>2023-10-31 → 2025-04-30</span></div>
+<div class="block gap"><strong>gap1 · 3 个</strong><span>2025-05-31 → 07-31</span></div>
+<div class="block cal"><strong>Calibration · 3 个</strong><span>2025-08-31 → 10-31</span><span>只在这里拟合校准器；也是 evidence</span></div>
+<div class="block gap"><strong>gap2 · 3 个</strong><span>2025-11-30 → 2026-01-31</span></div>
+<div class="block test"><strong>Final Test · 3 个</strong><span>2026-02-28 → 04-30</span></div></div><p class="small">enabled=true；evidence_source=calibration；排名字段 calibrated。</p></article>
+<article class="card amber"><span class="label">B · RAW-RETAINED</span><h3>关闭校准，分配不变</h3><p><code>conf/training.raw-retained.yaml</code></p><div class="timeline">
+<div class="block train"><strong>Train · 19 个快照</strong><span>2023-10-31 → 2025-04-30</span></div>
+<div class="block gap"><strong>gap1 · 3 个</strong><span>2025-05-31 → 07-31</span></div>
+<div class="block cal"><strong>保留窗口 · 3 个</strong><span>2025-08-31 → 10-31</span><span>仅 evidence / raw 诊断，不拟合校准器</span></div>
+<div class="block gap"><strong>gap2 · 3 个</strong><span>2025-11-30 → 2026-01-31</span></div>
+<div class="block test"><strong>Final Test · 3 个</strong><span>2026-02-28 → 04-30</span></div></div><p class="small">enabled=false；evidence_source=calibration；排名强制 raw。</p></article>
+<article class="card blue"><span class="label">C · RAW-REALLOCATED</span><h3>显式扩展 Train</h3><p><code>conf/training.raw-reallocated.yaml</code></p><div class="timeline">
+<div class="block train"><strong>Train · 25 个快照</strong><span>2023-10-31 → 2025-10-31</span><span>尾部 inner_valid 同时提供 evidence</span></div>
+<div class="block empty"><strong>gap1=0；calibration=0</strong><span>两个参数显式为零，不是关开关自动挪用</span></div>
+<div class="block gap"><strong>Train→Test gap · 3 个</strong><span>2025-11-30 → 2026-01-31</span></div>
+<div class="block test"><strong>Final Test · 3 个</strong><span>2026-02-28 → 04-30</span></div></div><p class="small">enabled=false；evidence_source=inner_valid；排名强制 raw。</p></article>
+</div>
+<figcaption>三个 preset 均有 5 个 immature 快照（2026-05-31..09-30），不参与监督拟合或 Final Test。三个示例 evidence 恰同为 2025-08-31..10-31，因此事件数可以相同。</figcaption>
+</figure>
+<article class="card" id="rp-rolling">
+<h3>Train 内部：tuning 选迭代，champion 单独 refit</h3>
+<div class="grid">
+<div><span class="label">A / B 的 Train 19</span><p><strong>tuning_fit 13</strong><br>2023-10-31 → 2024-10-31</p><p><strong>inner_gap 3</strong><br>2024-11-30 → 2025-01-31</p><p><strong>inner_valid 3</strong><br>2025-02-28 → 04-30</p></div>
+<div><span class="label">C 的 Train 25</span><p><strong>tuning_fit 19</strong><br>2023-10-31 → 2025-04-30</p><p><strong>inner_gap 3</strong><br>2025-05-31 → 07-31</p><p><strong>inner_valid 3 + evidence</strong><br>2025-08-31 → 10-31</p></div>
+</div>
+<p><code>refit_scope=all_train</code> 默认将全部分配 Train（含 inner gap、inner_valid）用于 champion；也可选 <code>tuning_fit</code>。两者都排除保留 calibration 和 Test。inner_valid 的导出仍来自 tuning 模型，是迭代选择诊断。</p>
+<p><code>train_max_snapshots</code> 默认 null，可限制最近 Train；更早成熟行标 <code>unused</code>。<code>min_train_snapshots=12</code>。inner_valid、calibration、test 数量与各 gap 独立配置；不足或不合法时拒绝，不悄悄截短。</p>
+</article>
+<article id="rp-evaluation">
+<h3 style="margin-top:26px">标签不重叠与标签已可用，是两条检查</h3>
+<div class="grid">
+<div class="card blue"><span class="label">隔离标签窗口</span><p class="formula">前块末快照 + H ≤ 后块首快照</p><p>H=3，使用真实观测日期。用于 tuning_fit→inner_valid、Train→calibration→Test；无 cal 时直接检查 Train→Test。</p><p class="small">gap 是观测快照数；稀疏历史不虚构月份，也不统一强加 5 个月。</p></div>
+<div class="card teal"><span class="label">确认阶段可用标签</span><p class="formula">max ready_on ≤ 阶段 as_of</p><p><code>ready_on=add_months(s,H+m)</code>，H=3、m=2，直接 +5 日历月并裁剪日。tuning 也要等验证标签可用。</p><p class="small">四个 as_of 为 tuning_fit / base_fit / calibrator_fit / evaluation，null 取 extraction；按有效阶段排序且不晚于 extraction。</p></div>
+</div>
+<div class="note"><strong>为什么不能宣称历史部署验证？</strong> 默认 base 标签到 2025-09-30 才成熟，晚于 cal 首日 2025-08-31；cal 标签到 2026-03-31 才成熟，晚于 Test 首日 2026-02-28。当前所有有效 as_of 是 2026-10-01。真正部署模拟还需要 <code>fit_as_of ≤ prediction origin</code>，当前未实现。</div>
+<p class="small">当前 A/B tuning/base ready_on=2025-09-30，C 为 2026-03-31；evidence ready_on=2026-03-31，Test=2026-09-30。仅 A 拟合 calibrator，其 ready_on=2026-03-31。直接 H+m 的例子：2026-11-30 +5 月 = 2027-04-30，不采用先 +3 再 +2 得到的 04-28。</p>
+</article>
+</section>
+
+<section class="section" id="calibration-decision" aria-labelledby="calibration-title">
+<div class="section-title"><span class="no">图 3</span><h2 id="calibration-title">先确定 evidence，再决定是否校准</h2></div>
+<p class="intro">证据来源、calibration 分配、Test 报告是三件事。最终 Test 永远不能选择 tier 或校准方法；关闭 calibration 也不会取消低证据产品的排除规则。</p>
+<figure aria-label="evidence独立计数与三档阈值，启用校准时拟合保留窗口，禁用时无拟合，最终Test做固定gate">
+<div class="card"><span class="label">第 1 步 · 明确计数依据</span><h3>evidence_source → evidence_event_count → tier</h3><p>同 L2、<code>elig_at_feature_snapshot=1</code>、申请日期落在 <code>(块首快照, 块末快照+H]</code> 的 distinct purchase_id；02 采用 01 的 client 抽样比例。</p><div class="grid three"><p><strong>evidence_event_count</strong><br>tier 的真正依据，来源写入报告。</p><p><strong>calibration_event_count</strong><br>实际 cal 分配的事件数；无块为 0。</p><p><strong>test_event_count</strong><br>只报告，不选择模型、tier 或方法。</p></div></div>
+<div class="arrow" aria-hidden="true">↓ 阈值保持不变 ↓</div>
+<div class="grid three">
+<article class="card teal"><span class="label">OWN</span><div class="number">≥ 200</div><h3>启用时用 Platt</h3><p>在 calibration 做未约束斜率的 Platt 拟合，再检查 b&gt;0；b≤0 才重新拟合 intercept-only。</p></article>
+<article class="card blue"><span class="label">LIMITED</span><div class="number">100 ≤ E &lt; 200</div><h3>启用时仅调截距</h3><p>intercept-only，斜率固定为 1；仍只拟合 calibration。</p></article>
+<article class="card amber"><span class="label">INSUFFICIENT</span><div class="number">&lt; 100</div><h3>始终不参与排名</h3><p>enabled 时 method=none、status=not_calibrated；disabled 时仍保留 insufficient tier 排除。</p></article>
+</div>
+<p class="small">E 是 distinct evidence 事件数，不是校准拟合行数 n。200/100 是可配置的工程阈值，不保证统计充分或拟合成功；启用时方法由 tier 自动选择，配置没有手动 Platt/intercept 开关。</p>
+<div class="arrow" aria-hidden="true">↓ calibration.enabled 明确决定是否 fit ↓</div>
+<div class="grid">
+<article class="card teal"><h3>enabled = true</h3><p>必须有保留且成熟的 calibration 块，evidence_source 必须为 calibration。own/limited 才拟合；不足不校准。</p><p>Test 报告真实 raw 与实际 calibrated 指标，不在 Test 上挑方法。</p></article>
+<article class="card blue"><h3>enabled = false</h3><p><strong>所有 tier 均无校准 fit；method/status=disabled；排名强制 raw。</strong> 兼容加载的 identity artifact 不代表已校准。</p><p>服务 calibrated 概率为 NULL；不存在的 calibrated 报告为 JSON null / 控制台 N/A。保留窗口可报告 raw 诊断；零窗口没有 calibration 评价行。</p></article>
+</div>
+<div class="arrow" aria-hidden="true">↓ Final Test 只报告 + 既定放行门 ↓</div>
+<div class="card"><h3>固定 gate，按排名使用的分数判断</h3><div class="grid"><p><strong>AUROC ≥ 0.60</strong><br><strong>lift@10% ≥ 1.5</strong></p><p><strong>O/E ∈ [0.8, 1.25]</strong><br><strong>slope ∈ [0.7, 1.3]</strong></p></div><p>calibrated 排名且有实际校准时用 calibrated，否则用 raw。缺失/非有限指标不通过。报告还包括 PR-AUC、log-loss、Brier、reliability、逐快照 O/E/slope、client 聚类 bootstrap CI。</p></div>
+<div class="arrow" aria-hidden="true">↓ tier ∈ {own, limited} 且 gate_passed 且 status ≠ not_calibrated ↓</div>
+<div class="grid"><div class="decision pass"><strong>全部满足 → ranking_eligible_flag=1</strong><br>进入图 4，仍须满足该客户的产品 eligibility。</div><div class="decision fail"><strong>任一不满足 → rank=NULL</strong><br>保留报告/输出；不足证据不会因 raw 模式获得排名资格。</div></div>
+<figcaption>图 3 — raw-reallocated 的 p1 保存证据为 190 inner_valid events、0 calibration events；Test AUROC 报告 0.7392→N/A。三个实际校准产品保留真实 calibrated 数值，其余缺失不拿 raw 补齐。</figcaption>
+</figure>
+<div class="note"><strong>计数与概率的边界。</strong> evidence 日期改变可能改变 tier，但本页三个 preset 的 evidence 日期相同，计数可一致。稀疏历史仍按首尾事件包络计数，不是逐窗口精确并集。跨产品 raw 排名不保证分别训练的 propensity 已是可比的校准购买概率。</div>
+<article class="math-detail card" id="calibration-math" aria-labelledby="calibration-math-title">
+<span class="label">图 3 补充 · 校准公式与排序</span>
+<h3 id="calibration-math-title">校准改的是概率刻度，排序要分两种看</h3>
+<p>每个产品学习自己的变换。s 是冻结 champion 的原始分数，q 是实际进入公式的裁剪值，y∈{0,1} 是成熟购买标签。下面参数与数字均为<strong>数学示例，不是模型拟合结果或验收成绩</strong>。</p>
+<h4>1 · odds、logit 与 sigmoid 是什么？</h4>
+<pre class="math-block" aria-label="裁剪、odds、logit和sigmoid的定义">ε = 10⁻⁶
+q = clip(s, ε, 1−ε) = min(max(s, ε), 1−ε)
+odds(q) = q / (1−q)
+logit(q) = ln(q / (1−q))
+sigmoid(z) = 1 / (1+exp(−z))
+sigmoid(logit(q)) = q
+logit(sigmoid(z)) = z</pre>
+<p>odds 是“发生概率 / 不发生概率”：10% 的 odds 是 1/9，50% 的 odds 是 1。logit 将概率变到实数轴，sigmoid 在精确运算中做逆变换。裁剪避免 0/1 的无限 logit；q 可能不同于 s，裁剪也不修复缺失/无效输入。</p>
+<div class="grid">
+<div><h4>2 · Intercept-only：只拟合 a</h4>
+<pre class="math-block" aria-label="截距校准及odds推导">b = 1；z = a + logit(q)
+p = sigmoid(z)
+p/(1−p) = exp(z)
+         = exp(a) · q/(1−q)
+p = exp(a) · q / (1−q + exp(a) · q)</pre>
+<p>乘的是 odds，不是概率，也不是固定百分点。a=ln(2) 时 odds 翻倍：<strong>10%→18.18%，50%→66.67%</strong>。a=0 返回 q；只有未裁剪时才等于 s。</p></div>
+<div><h4>3 · Platt：同时拟合 a 与 b</h4>
+<pre class="math-block" aria-label="Platt公式与odds关系">z = a + b · logit(q)
+p = sigmoid(z)
+p/(1−p) = exp(a) · [q/(1−q)]ᵇ</pre>
+<p>a 调基准 odds：q=0.5 时 p=sigmoid(a)。b 缩放 log-odds 差值；预测公式取 b=1 就是 intercept-only，实际拟合过程仍不同。</p>
+<p>a=0、b=0.5 时：<strong>10%→25%，50%→50%，90%→75%</strong>。本例向 50% 收缩；其他 a,b 不一定如此。</p></div>
+</div>
+<h4>4 · 用什么数据和目标函数拟合？</h4>
+<p>只用独立 calibration 上的 eligible 冻结 champion 预测/标签，既不在 Train 拟合校准器，也不在 Final Test 优化参数或选择方法。n 是<strong>校准拟合行数</strong>，含正、负标签；E 是 distinct evidence 事件数，一次购买可以对应多个快照标签，两者不能互换。</p>
+<pre class="math-block" aria-label="二元交叉熵及稳定计算">pᵢ = sigmoid(zᵢ)
+L = −(1/n) Σᵢ [yᵢ ln(pᵢ) + (1−yᵢ) ln(1−pᵢ)]
+  =  (1/n) Σᵢ [ln(1+exp(zᵢ)) − yᵢ zᵢ]
+稳定的每行计算：
+max(zᵢ,0) + ln(1+exp(−|zᵢ|)) − yᵢ zᵢ</pre>
+<p>稳定算法避免 exp(z) 溢出。实际 intercept 固定 b=1，使用 <code>logaddexp(0,z)−y*z</code> 的平均值，在 (-20,20) 做有界截距搜索；不收敛或结果距边界小于 1e-6 时拒绝。</p>
+<p>Platt 调用 <code>LogisticRegression(C=platt_C, solver="lbfgs", max_iter=1000, tol=1e-10)</code>，无 sample/class weights。本机已核对的 sklearn 1.6.1 默认 <code>penalty="l2"</code>、<code>fit_intercept=True</code>，目标是：</p>
+<pre class="math-block" aria-label="Platt实际正则目标">J(a,b) = L(a,b) + b²/(2nC)
+截距 a 不受惩罚；默认 C=1,000,000</pre>
+<p>默认 L2 很弱，但不等于零。源码/配置中 “effectively unpenalised” 不能读作精确无正则最大似然。依据 <a href="https://scikit-learn.org/1.6/modules/linear_model.html#binary-case">sklearn 1.6 官方目标函数</a>和 <a href="https://scikit-learn.org/1.6/modules/generated/sklearn.linear_model.LogisticRegression.html">参数文档</a>；尚未验证的 Databricks Runtime 仍须核对版本。</p>
+<p>两种 fit 都需要正、负标签；单一类别会报错，不会自动变成成功的 intercept 回退。缺失所需行/块或无效分数/标签违反 02 契约。常数或几乎常数分数没有可恢复的区分信息；clip、极端参数、数值饱和可产生并列或退化诊断。这些边界说明不代表所有情形已做端到端测试。</p>
+<h4>5 · 单产品内，为什么排序可以保持？</h4>
+<pre class="math-block" aria-label="对裁剪输入q的导数">dp/dq = p(1−p) · b · 1/[q(1−q)]
+      = b p(1−p)/[q(1−q)] &gt; 0</pre>
+<p>对内部 q∈(0,1)、有限 a 和有限正 b，精确运算下严格递增；实际浮点计算还需没有饱和。intercept 的 b=1 也满足。但<strong>这不是对原始 s 的无条件严格单调保证</strong>：不同 s 可 clip 到同一 q，sigmoid 数值饱和也会增加并列。</p>
+<p>固定同一产品的评价行与标签，如果所有两两大小关系和并列都相同，AUROC 就相同，因为它只取决于正负例的胜负与并列；平分处理相同时，top-fraction 顺序和集合也相同。新增并列时不能无条件保证。02 另检查实际 Test Spearman ρ≥1−1e-9；常数序列的未定义相关等退化可被拒绝，这不证明概率准确。</p>
+<h4>6 · 同一客户跨产品，Top-3 为什么仍会改变？</h4>
+<p>四个虚构产品都满足同样资格，集合固定，业务权重均 W=1；每个变换均为 b=1 的递增函数，只是各产品 a 不同：</p>
+<div class="table-scroll" tabindex="0" role="region" aria-label="跨产品校准数学示例，可横向滚动"><table class="math-table"><thead><tr><th scope="col">产品</th><th scope="col">原始 s=q</th><th scope="col">截距 a</th><th scope="col">校准 p</th><th scope="col">顺位变化</th></tr></thead><tbody>
+<tr><th scope="row">A</th><td>40%</td><td>ln(1/4)</td><td>14.29%</td><td>1→4</td></tr>
+<tr><th scope="row">B</th><td>30%</td><td>ln(2)</td><td>46.15%</td><td>2→1</td></tr>
+<tr><th scope="row">C</th><td>20%</td><td>0</td><td>20.00%</td><td>3→3</td></tr>
+<tr><th scope="row">D</th><td>10%</td><td>ln(4)</td><td>30.77%</td><td>4→2</td></tr>
+</tbody></table></div>
+<p>raw 顺序 A→B→C→D，校准后 B→D→C→A；Top-3 从 {A,B,C} 换成 {B,D,C}。各产品内客户排序保持，与该客户跨产品顺序改变可以同时成立。例子只证明顺序和成员<strong>可以改变</strong>，不保证推荐收益或校准质量改善。</p>
+<p>跨产品 calibrated 概率的准确性和可比性需要一致目标/数据及实际验证，不能仅靠单调性证明；raw 也没有这项保证。实际 gate、eligibility、业务权重和图 4 的平分规则保持原契约。</p>
+<div class="note info"><strong>验证到哪里：</strong>最近 10% 合成 calibrated 验收为三个 limited/intercept、其余 insufficient；raw 路径已测试。当前 full-volume own/Platt 端到端未运行，既有全量指标是历史记录。数学示例检查仅验证本文数字，不是新的模型、流水线或 Databricks 验收。</div>
+<p class="small">对应 <a href="MVP_SPEC.md#calibration-math">中文规范</a>、<a href="GENIE_HANDOVER.md#calibration-math">English handover</a>；实现见 <a href="../notebooks/modeling.py">modeling.py</a>、<a href="../notebooks/02_calibrate_and_validate.py">02</a>、<a href="../notebooks/l1_contract.py">配置校验</a>和 <a href="../conf/training.yaml">默认 YAML</a>。</p>
+</article>
+</section>
+
+<section class="section" id="ranking-example" aria-labelledby="ranking-title">
+<div class="section-title"><span class="no">图 4</span><h2 id="ranking-title">每个客户：先判资格，再加权排序</h2></div>
+<p class="intro">下面是说明规则的虚构示例，不是验收产物。发布字段设为 calibrated，top_k=3；同一发布不按产品混用 raw/calibrated。</p>
+<div class="grid"><div class="card teal"><span class="label">发布策略</span><p class="formula">ranking_score = ranking_field × W</p><p>只排序 <code>ranking_eligible_flag=1</code> 的行，分数降序；同分按 l2 名字典序。raw 模式只替换发布字段，其资格与权重政策不变。</p></div><div class="card blue"><span class="label">客户 eligibility</span><p><code>elig=0</code> → 两个概率、ranking_score、rank 为空；reason 为 not_eligible。产品级 tier/gate 不通过 → rank 为空，reason 为 not_ranking_eligible。</p><p class="small">Top-k 可以不足 k；不要为凑足三条强行加入被排除产品。</p></div></div>
+<figure aria-label="同一客户六产品示例，product5第一，product1和product8同分按名称排序，另三项不参与排名">
+<div class="desktop-ranking">
+<p class="scroll-hint">宽表可横向滚动；手机自动转为逐产品卡片。</p>
+<div class="table-scroll" tabindex="0" role="region" aria-label="加权排名示例，可横向滚动"><table class="ranking"><thead><tr><th scope="col">L2</th><th scope="col">elig</th><th scope="col">calibrated</th><th scope="col">W</th><th scope="col">ranking_score</th><th scope="col">rank</th><th scope="col">说明</th></tr></thead><tbody>
+<tr><td>product5</td><td>1</td><td class="numeric">0.090</td><td>1.2</td><td class="numeric">0.108</td><td>1</td><td>own / gate 通过；Top-3</td></tr>
+<tr><td>product1</td><td>1</td><td class="numeric">0.100</td><td>1.0</td><td class="numeric">0.100</td><td>2</td><td>own / gate 通过；同分名称在先</td></tr>
+<tr><td>product8</td><td>1</td><td class="numeric">0.100</td><td>1.0</td><td class="numeric">0.100</td><td>3</td><td>limited / gate 通过；Top-3</td></tr>
+<tr><td>product11</td><td>0</td><td>NULL</td><td>1.0</td><td>NULL</td><td>NULL</td><td>not_eligible</td></tr>
+<tr><td>product14</td><td>1</td><td>NULL</td><td>1.0</td><td>NULL</td><td>NULL</td><td>insufficient；not_ranking_eligible</td></tr>
+<tr><td>product16</td><td>1</td><td class="numeric">0.080</td><td>1.0</td><td class="numeric">0.080</td><td>NULL</td><td>gate 未过；not_ranking_eligible</td></tr>
+</tbody></table></div>
+</div>
+<div class="rank-cards">
+<article class="rank-card"><h4>1 · product5</h4><p>calibrated 0.090 × W 1.2 = <strong>0.108</strong></p><p>elig=1；own；gate 通过 → Top-3</p></article>
+<article class="rank-card"><h4>2 · product1</h4><p>calibrated 0.100 × W 1.0 = <strong>0.100</strong></p><p>elig=1；own；gate 通过。同分时名称在 product8 前。</p></article>
+<article class="rank-card"><h4>3 · product8</h4><p>calibrated 0.100 × W 1.0 = <strong>0.100</strong></p><p>elig=1；limited；gate 通过 → Top-3</p></article>
+<article class="rank-card excluded"><h4>不排名 · product11</h4><p>elig=0；两个概率、ranking_score、rank 均 NULL。</p><p>exclusion_reason=not_eligible</p></article>
+<article class="rank-card excluded"><h4>不排名 · product14</h4><p>elig=1；insufficient；无 calibrated 概率和 rank。</p><p>exclusion_reason=not_ranking_eligible</p></article>
+<article class="rank-card excluded"><h4>不排名 · product16</h4><p>elig=1；calibrated 0.080 × 1.0 = 0.080，但 gate 未过，rank=NULL。</p><p>exclusion_reason=not_ranking_eligible</p></article>
+</div>
+<figcaption>图 4 — 六行进入 customer_l2_scores；前三行进入 customer_top_recommendations，并生成 Layer 2 指导及理由组贡献。概率或加权分数存在，不等于有排名资格。</figcaption>
+</figure>
+<h3>下游只消费已提交的 run_date</h3>
+<div class="commit"><div class="card"><strong>先删旧标记</strong><br><code>scoring_runs</code></div><div class="arrow" aria-hidden="true">↓</div><div class="card"><strong>写三张数据表并核对</strong><br>scores / top recommendations / contributions</div><div class="arrow" aria-hidden="true">↓</div><div class="card"><strong>最后写提交标记</strong><br><code>scoring_runs</code></div></div>
+<p>下游按 run_date join <code>scores.scoring_runs</code>；中途失败而缺少标记时，该日期不算提交。模型文件、selection 和输出表之间没有统一原子事务。</p>
+<div class="grid">
+<article class="card"><h3>追溯“用了什么”</h3><ul><li>release_id、model_run_id、calibrator_run_id、layer2_version。</li><li>完整 training config/hash；模型 role、artifact、best_iteration；model/spec/calibrator hashes。</li><li>实际日期、ready_on、as_of；模型/转换的拟合范围。</li><li>score 行有配置哈希与模型角色；更完整 provenance 保存在 manifest。</li></ul></article>
+<article class="card"><h3>追溯“读了哪版输入”</h3><p>04 先捕获 modeling_table / model_selection / layer2_models 的版本，再按版本读取，manifest 记相同 pins。</p><p>当前表标识是<strong>物理表名 + Delta version</strong>，没有 Delta UUID；逐表 pins 不是跨表原子快照。失败不得回退 latest。</p><p class="small">新配置需新唯一 release；不兼容或缺 provenance 的旧产物被拒绝，不能仅改标签复用。</p></article>
+</div>
+<article class="math-detail card" id="layer2-math" aria-labelledby="layer2-math-title">
+<span class="label">数学说明 · 当前实现</span><h3 id="layer2-math-title">Layer 2：购买条件下的属性分布</h3>
+<h4>目标与 head 的训练人口</h4>
+<p>Layer 1 回答“会不会买这个产品”，Layer 2 使用 eligible <strong>购买事件</strong>与对应快照特征，学习 <code>P(A=v | 已购买产品 ℓ, x, eligible)</code> 这种购买者条件下的属性选择模式。未购买行不是 Layer 2 的负例；这个分布不是又一份购买概率，也不估计 <code>P(购买且选择某配置)</code>。把购买者中的相关模式用于当前客户指导，不等于预测改变配置后的购买收益。</p>
+<p><code>sp_rp / par_nonpar / buying_for</code> 各有一个跨产品 pooled LightGBM head，输入原特征加 categorical <code>l2</code>。配置顺序明确为 <code>sp_rp=[SP,RP]</code>、<code>par_nonpar=[Par,NonPar]</code>、<code>buying_for=[self,spouse,child,parent]</code>。二分类的正类是<strong>第二个配置值</strong>，即 RP 或 NonPar；模型输出 r 后组装 <code>[1−r,r]</code>。前两者用 binary BCE，四值 buying_for 使用 multiclass softmax 与类别交叉熵：</p>
+<pre class="math-block">二值：r = sigmoid(F(x,ℓ))；L = −mean[y ln(r)+(1−y) ln(1−r)]
+多值：r_v = exp(F_v) / Σ_u exp(F_u)
+      L = −(1/n) Σᵢ Σ_v 1[Aᵢ=v] ln(rᵢ,v)</pre>
+<p>训练池包含该属性有至少两个有效值的所有 L2 的有效 Train 购买行，即使某 L2 最终使用 share，仍可为 pooled head 提供训练行。head 在这个训练池最后 <strong>3 个实际观测申请月</strong>上 early-stop，再以选定轮数在完整 pooled Train 重拟合。Layer 2 类别字典来自自己的 pooled Train；它有独立的申请日期 Train/Test（当前 Train≤2026-01-31，Test 2026-02-01..07-31），不复制 L1 的留出窗口，也没有实现 Layer 2 calibrator。</p>
+<h4>逐产品决定 head、share、fixed、rule</h4>
+<p>服务计划再按 L2 检查该属性的有效值：单一值为 fixed；多个值时，head 需<strong>每个有效值</strong>至少 200 条有效 Train 购买行，否则使用 Laplace 历史占比。这里 <code>min_rows_per_value=200</code> 是属性样本条件，与 L1 校准 own tier 的 200 个 distinct evidence 事件是两回事。若产品无有效值，则为 not_applicable。</p>
+<p>对 K 个有效值及计数 n_v，share 使用 <code>r_v=(n_v+1)/(Σ有效值 n_u+K)</code>，无效值为 0。这是加一平滑计数，不训练一个优化器。例如有效值计数 <code>[8,1,0]</code> 时得到 <code>[9/12,2/12,1/12]=[0.750000,0.166667,0.083333]</code>，零计数也有小的非零占比。fixed 给唯一值概率 1；mass_higher 的多值 rule 对 <code>wealth_seg3∈{UHNW,HNW,Affluent}</code> 给 HigherEnd，否则给 Mass，<strong>缺失也走 Mass</strong>。rule/fixed/share 都没有学习损失最小化步骤；它们仍要经过后面的有效性约束。</p>
+<h4>先 mask 再归一化，最后决定是否 abstain</h4>
+<p>每个产品的属性有效值由 validity 表按属性投影得到（未提供该属性列时使用配置值全集）；同时按客户特征施加 buying_for 约束：spouse 要 Married、parent 要年龄&lt;50、child 要年龄&gt;25。<code>on_missing</code> 决定缺失输入 allow/block，当前三条均明确 allow，含义是未知不据此排除，不表示条件已被事实验证。</p>
+<p>令 m_v 表示产品有效性与客户约束都允许该值。对有限概率，服务变换是：</p>
+<pre class="math-block">r′_v = m_v r_v / Σ_u(m_u r_u)
+margin = 最大 r′ − 第二大 r′</pre>
+<p>实际实现用 <code>np.where(mask, r, 0)</code> 清零后才求和：被 mask 排除的 NaN 可以被移除，并非输入任意一项 NaN 都必定使整行无效。<strong>保留下来的总量</strong>为 0 或非有限时输出 not_applicable；总量可用时归一化。head/share 的 margin&lt;0.20 才 abstain；相等的 0.20 按规则通过（浮点计算按实际存储值比较），fixed/rule 不受 margin abstain。只剩一个非零值时归一化为 1、其余为 0，margin=1；并列最大值先按配置值顺序选取，再判断 abstain。</p>
+<p>例如 buying_for 的原概率按配置顺序为 <code>[0.45,0.35,0.15,0.05]</code>，当前客户允许 self/child、不允许 spouse/parent，mask=<code>[1,0,1,0]</code>。保留总量为 0.60，归一化为 <code>[0.75,0,0.25,0]</code>，margin=0.50，输出 self。另一个有限分布 <code>[0.45,0.40,0.10,0.05]</code> 若全部允许，margin=0.05，head/share 应 abstain；前述三值 share 示例若均允许，margin=0.750000−0.166667=0.583333，通过。这些都是纯数学示例，不是实测 head 概率。</p>
+<p>当前按<strong>每个属性独立</strong>给指导；把各 head 的概率直接相乘不等于学到了有效联合配置，更不能证明该组合最优。validity 的属性投影也不是联合组合求解器。04 在产品 Top-3 确定后才计算指导，不据此重排产品。属性选择、购买概率和因果收益应分别解读。</p>
+<p>实现对应：<a href="../notebooks/03_layer2_and_reasons.py">03</a> 的 <code>l2_plan / train_head</code>、<a href="../notebooks/modeling.py">modeling.py</a> 的 <code>class_probabilities / restrict_probabilities / layer2_guidance</code>、<a href="../conf/layer2.yaml">layer2.yaml</a>、<a href="../conf/l2_config_validity.csv">validity</a>。同义入口：<a href="GENIE_HANDOVER.md#layer2-math">英文</a>、<a href="modeling_flow.html#layer2-math">离线图解</a>。</p>
+</article>
+<article class="math-detail card" id="shap-math" aria-labelledby="shap-math-title">
+<span class="label">数学说明 · 当前实现</span><h3 id="shap-math-title">SHAP：校准前 log-odds 的贡献</h3>
+<h4>实际调用、baseline 与单位</h4>
+<p>当前 <code>modeling.feature_contributions</code> 调用的是原生 <code>LightGBM Booster.predict(X, pred_contrib=True)</code>。二分类返回 n×(d+1)：前 d 列对应原始模型特征贡献，末列是 Booster 返回的 bias。helper 检查形状后只把前 d 列交给 reasons；bias 仍是理解完整分解所必需的基准。这里没有构造 <code>shap.TreeExplainer</code>、用户 background DataFrame、interventional background、probability/logloss 的 model_output，或 Layer 2 explainer。</p>
+<p>原生 TreeSHAP 使用模型树中保存的路径/计数信息处理特征贡献，依据 <a href="https://lightgbm.readthedocs.io/en/v4.6.0/pythonapi/lightgbm.Booster.html#lightgbm.Booster.predict">LightGBM 4.6 Booster.predict 文档</a>与 <a href="https://github.com/lightgbm-org/LightGBM/blob/v4.6.0/include/LightGBM/tree.h">官方 tree.h 实现</a>。不能把没有传入的“总体平均客户”、当前打分批次或用户选定客户群说成这个调用的 background。末列 φ₀ 是该模型的 <strong>raw-output baseline</strong>，不是平均购买概率，也不是约定为 0。</p>
+<p>对当前默认 sigmoid=1 的 L1 二分类 champion，完整加法分解在 raw log-odds（margin）尺度成立：</p>
+<pre class="math-block">Fℓ(x) = φ₀,ℓ + Σⱼ φⱼ,ℓ(x)
+sℓ(x) = sigmoid(Fℓ(x))</pre>
+<p>正贡献把 margin 向上推，负贡献把它向下推。纯数学瀑布例子为 <code>−2.0 → +0.6 → +0.3 → −0.1</code>：<code>F=−2+0.6+0.3−0.1=−1.2</code>，<code>s=sigmoid(−1.2)=23.15%</code>。其中 +0.3 是 log-odds 贡献，绝非 +30 个百分点；sigmoid 非线性意味着概率增量依赖已有 margin，不能逐项 sigmoid 后相加。各产品有各自模型和 bias，跨产品 SHAP 数字不能当成概率收益比较。</p>
+<p>解释输入严格沿用对应 champion 的 <code>feature_columns</code> 顺序、已保存类别水平与 float32 数值；未知类别为 NaN。贡献对应 LightGBM 的原始输入特征，不是 logistic baseline 的 one-hot 列。03 既有 smoke 从 Test 购买行取最多 100 行，检查“特征贡献和+bias”对 <code>raw_score=True</code> 的最大误差&lt;1e-6；这里只描述已有实现与既有流水线覆盖，本次没有再跑 smoke/训练。</p>
+<h4>从完整贡献到可展示理由</h4>
+<p><code>reason_group</code> 的聚合是 <code>Φ_g=Σⱼ∈g φⱼ</code>。推荐理由只保留 <code>Φ_g&gt;0</code>、explainable 且非 sensitive 的组，降序取 top_n_reasons（默认 3），同分按配置组顺序。正贡献组的代表特征取组内最大正方向贡献；完整审计中负组则取最负方向特征。代表特征仅用于展示，不能代替全组和。</p>
+<p>审计表可保留所有组及 sensitive/explainable 标志，可选记录 feature contributions；对外正向前三理由省略 bias、负组和被过滤组，<strong>不是完整可加分解</strong>。没有展示某负组不表示该特征未被模型使用；分组只是业务展示映射，不是特征独立性或理论独立性的保证，也不授权展示原本被过滤的敏感属性。</p>
+<h4>校准之后，这些贡献还能说明什么</h4>
+<p>当前返回的解释只分解<strong>校准前的 L1 champion</strong>。它不分解 calibrated probability、business_weight、eligibility/gate、跨产品 rank、Layer 2 head/rule 或属性选择；不能把 reason_1..3 描述为完整的“为何 Top-3”证明。校准保留单产品内部客户次序，也不能补上这些未解释环节，而且各产品的变换不同，可能改变客户的跨产品次序。</p>
+<p>若完全没有 clipping 改变输入且没有数值饱和，可作下列代数推导：</p>
+<pre class="math-block">logit(p) = a+bF = (a+bφ₀) + Σⱼ bφⱼ</pre>
+<p>这是 logit 尺度的仿射变换，<strong>未实现为当前解释输出</strong>；不能据此宣称已计算 calibrated-probability SHAP。再经 sigmoid 后，特征的概率贡献不满足这种逐项相加关系；发生 clip 时也不能直接把 logit(q) 替换成 F。</p>
+<p>SHAP 在既定模型与贡献分配假设下解释关联和模型归因，不证明因果、行动建议、改变一个特征就能获得相应收益，或反事实保证。相关特征及 background/路径分配假设会影响功劳如何分摊；此实现没有提供特征独立、因果识别或公平性保证。</p>
+<p>实现对应：<a href="../notebooks/modeling.py">modeling.py</a> 的 <code>feature_contributions / group_contributions / explain_rows</code>、<a href="../notebooks/03_layer2_and_reasons.py">03</a> 的加法检查、<a href="../notebooks/04_batch_scoring.py">04</a>、<a href="../conf/reason_groups.yaml">reason_groups.yaml</a>、<a href="../conf/feature_groups.csv">feature_groups.csv</a>。同义入口：<a href="GENIE_HANDOVER.md#shap-math">英文</a>、<a href="modeling_flow.html#shap-math">离线图解</a>。</p>
+</article>
+</section>
+
+<section class="section" id="table-contract" aria-labelledby="tables-title">
+<div class="section-title"><span class="no">参考</span><h2 id="tables-title">14 张表的职责与验证边界</h2></div>
+<div class="grid three">
+<article class="card"><h3>输入与准备 · 4 张</h3><ul class="mono"><li>raw.client_snapshot_monthly</li><li>raw.l2_purchase_config</li><li>ml.modeling_table</li><li>ml.data_dictionary</li></ul><p class="small">第一张是本地 00 的合成准备源；真实 job 前由上游直接提供后三张所需表。</p></article>
+<article class="card"><h3>建模 · 6 张</h3><ul class="mono"><li>ml.l1_raw_scores</li><li>ml.l1_training_runs</li><li>ml.l1_evaluation</li><li>ml.model_selection</li><li>ml.l2_evaluation</li><li>ml.layer2_models</li></ul></article>
+<article class="card"><h3>服务输出 · 4 张</h3><ul class="mono"><li>scores.customer_l2_scores</li><li>scores.customer_top_recommendations</li><li>scores.customer_reason_contributions</li><li>scores.scoring_runs</li></ul></article>
+</div>
+<p><strong>已有证据：</strong>68 项 broad 测试通过；报告修正后 39 项 focused 通过（含 5 项新增），独立复审另重跑 5 项并 ACCEPT。两个隔离 10% 合成/6 pilot 流程完成；每种模式的 64,896 行指定 score/rank 字段 files=MLflow，保存模型的抽样预测重现 max difference=0。</p>
+<p><strong>证据边界：</strong>完整 calibrated 流程并非在所有后续源码修正后再跑一遍；raw-retained 完整流程、当前全量验收、远端 bundle validate/部署未执行。51 项既有 Ruff 诊断仍在。失败/重试、具体比较列与源码快照限制见交接，不能把本页当作新运行报告。</p>
+<div class="note"><strong>Point 5 仍推迟：</strong>生产 evaluator、monitoring/drift、滚动校准、rolling OOF 均未实现。未来评价应使用当时保存的预测并等待标签成熟；本页没有宣称这些能力已交付。</div>
+</section>
+<footer>
+<p>当前入口：<a href="../README.md">README</a> · <a href="MVP_SPEC.md">业务规格</a> · <a href="GENIE_HANDOVER.md">Databricks handover</a></p>
+<p>依据：conf/training.yaml 与两个 raw preset、notebooks/l1_contract.py、common.py、modeling.py、01–04、resources/mvp.job.yml。00 仅说明本地合成准备边界，不随迁移包分发。页面自包含，无外部字体、脚本或必要网络资产；文字可选择。已有验证与未完成的远端验收见业务规格。</p>
+</footer>
+</main>
+</body>
+</html>

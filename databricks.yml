@@ -1,0 +1,14 @@
+# Databricks Asset Bundle of the notebook MVP (docs/MVP_SPEC.md section 11): one job, resources/mvp.job.yml.
+# Check locally (no deployment): databricks bundle validate -t dev
+bundle:
+  name: prodrec_mvp
+
+include:
+  - resources/*.yml
+
+targets:
+  dev:
+    mode: development
+    default: true
+    workspace:
+      host: "https://<workspace>.cloud.databricks.com"  # MIGRATION: set

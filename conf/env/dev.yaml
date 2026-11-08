@@ -1,0 +1,21 @@
+# Databricks dev workspace (DBR 18 LTS ML, Unity Catalog, MLflow 3).
+# To set at migration time:
+#   - catalog: the Unity Catalog catalog that holds the raw / ml / scores schemas
+#   - table_overrides: map a logical name to a fully qualified table when it does not live in
+#     {catalog}.{schema} (e.g. feature-engineering output in another catalog or schema)
+#   - paths.artifacts_dir: the UC volume for exported file bundles (replace <catalog>)
+#   - mlflow.experiment_root: workspace folder for the experiments
+env: dev
+platform: databricks
+catalog: <to_be_set>           # MIGRATION: replace with the real catalog name
+unity_catalog: true            # three-level names {catalog}.{schema}.{table}
+allow_synthetic_data: false    # notebook 00 (synthetic data preparation) refuses to run
+table_overrides: {}            # MIGRATION: e.g. {raw.client_snapshot_monthly: other_catalog.fe.client_snapshot_monthly}
+model_source: mlflow           # mlflow | files
+
+mlflow:
+  tracking_uri: databricks
+  experiment_root: /Shared/prodrec   # MIGRATION: workspace folder for the experiments
+
+paths:
+  artifacts_dir: /Volumes/<catalog>/ml/artifacts   # MIGRATION: replace <catalog>; the volume must exist

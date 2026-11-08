@@ -1,0 +1,77 @@
+# Full config: explicit reallocation; validation-window event counts may change eligibility.
+timeline:
+  extraction_date: 2026-10-01
+  horizon_months: 3
+  maturity_months: 2
+  mode: retrospective_holdout
+  tuning_fit_as_of: null
+  base_fit_as_of: null
+  calibrator_fit_as_of: null
+  evaluation_as_of: null
+split:
+  test_snapshots: 3
+  train_calibration_gap_snapshots: 0
+  calibration_test_gap_snapshots: 3
+  calibration_snapshots: 0
+  inner_valid_snapshots: 3
+  inner_gap_snapshots: 3
+  min_train_snapshots: 12
+  train_max_snapshots: null
+  refit_scope: all_train
+lightgbm:
+  objective: binary
+  metric: binary_logloss
+  num_leaves: 31
+  learning_rate: 0.05
+  min_data_in_leaf: 200
+  feature_fraction: 0.8
+  bagging_fraction: 0.8
+  bagging_freq: 1
+  lambda_l2: 1.0
+  max_rounds: 2000
+  early_stopping_rounds: 50
+  seed: 7
+  deterministic: true
+  force_row_wise: true
+  num_threads: 0
+  verbosity: -1
+logistic:
+  solver: lbfgs
+  C: 1.0
+  max_iter: 500
+  baseline_sample_rows: 500000
+evidence_tiers:
+  source: inner_valid
+  own_model_min_events: 200
+  limited_min_events: 100
+calibration:
+  enabled: false
+  isotonic: false
+  platt_C: 1000000
+  final_refit_calibrator: false
+gate:
+  auroc_min: 0.6
+  lift10_min: 1.5
+  oe_range:
+  - 0.8
+  - 1.25
+  slope_range:
+  - 0.7
+  - 1.3
+ranking:
+  ranking_field: raw
+evaluation:
+  top_fractions:
+  - 0.01
+  - 0.05
+  - 0.1
+  bootstrap:
+    n_boot: 200
+    seed: 11
+    ci: 0.95
+explain:
+  top_k: 3
+  top_n_reasons: 3
+  store_feature_level: false
+scoring:
+  lookback_days: 35
